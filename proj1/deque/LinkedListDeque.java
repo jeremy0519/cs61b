@@ -1,7 +1,9 @@
 package deque;
 
-public class LinkedListDeque<T> {
-    // A single Node, containing previous, value next
+import java.util.Iterator;
+
+public class LinkedListDeque<T> implements Iterable<T>, Deque<T> {
+    // A single Node, containing previous, value, and next
     private class Node {
         Node previous;
         T value;
@@ -26,6 +28,7 @@ public class LinkedListDeque<T> {
     }
 
     // 各种API
+    @Override
     public void addFirst(T item) {
         Node temp = sentinel.next;
         sentinel.next = new Node(sentinel, item, temp);
@@ -33,6 +36,7 @@ public class LinkedListDeque<T> {
         size += 1;
     }
 
+    @Override
     public void addLast(T item) {
         Node temp = sentinel.previous;
         sentinel.previous = new Node(temp, item, sentinel);
@@ -40,14 +44,12 @@ public class LinkedListDeque<T> {
         size += 1;
     }
 
-    public boolean isEmpty() {
-        return size == 0;
-    }
-
+    @Override
     public int size() {
         return size;
     }
 
+    @Override
     public void printDeque() {
         Node current = sentinel.next;
         while (current.value != null) {
@@ -57,6 +59,7 @@ public class LinkedListDeque<T> {
         System.out.println();
     }
 
+    @Override
     public T removeFirst() {
         if (size == 0) {
             return null;
@@ -69,6 +72,7 @@ public class LinkedListDeque<T> {
         }
     }
 
+    @Override
     public T removeLast() {
         if (size == 0) {
             return null;
@@ -81,6 +85,7 @@ public class LinkedListDeque<T> {
         }
     }
 
+    @Override
     // Iteration method
     public T get(int index) {
         if (index >= size) {
@@ -110,6 +115,49 @@ public class LinkedListDeque<T> {
         } else {
             return getRecursiveHelper(index, sentinel.next);
         }
+    }
 
+    // Support Iteration
+    public Iterator<T> iterator() {
+        return new LLDequeIterator();
+    }
+
+    private class LLDequeIterator implements Iterator<T> {
+        private int nextIndex = 0;
+
+        @Override
+        public boolean hasNext() {
+            return nextIndex < size();
+        }
+
+        @Override
+        public T next() {
+            T nextItem = get(nextIndex);
+            nextIndex += 1;
+            return nextItem;
+        }
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) {
+            return true;
+        }
+        if (o == null) {
+            return false;
+        }
+        if (!(o instanceof Deque)) {
+            return false;
+        }
+        Deque<T> obj = (Deque<T>) o;
+        if (!(obj.size() == this.size())) {
+            return false;
+        }
+        for (int i = 0; i < this.size(); i++) {
+            if (!(this.get(i).equals(obj.get(i)))) {
+                return false;
+            }
+        }
+        return true;
     }
 }
