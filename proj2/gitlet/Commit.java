@@ -1,26 +1,54 @@
 package gitlet;
 
-// TODO: any imports you need here
+import java.io.Serializable;
+import java.util.Date;
+import java.util.HashMap;
 
-import java.util.Date; // TODO: You'll likely use this in this class
+import static gitlet.Utils.*;
 
 /** Represents a gitlet commit object.
- *  TODO: It's a good idea to give a description here of what else this Class
- *  does at a high level.
  *
- *  @author TODO
+ *  @author jeremy0519
  */
-public class Commit {
+public class Commit implements Serializable {
+    // The message of this Commit.
+    final String message;
+    // The time of this commit.
+    final Date date;
+    // Parent commit id.
+    final String parent;
+    // Second parent commit id, used in merge commits only.
+    final String secondParent;
+    // Maps filename to blob location.
+    HashMap<String, String> files;
+
+    // Main Constructor
+    public Commit(String message) {
+        this.message = message;
+        this.date = new Date();
+        this.parent = Repository.currentCommitID;
+        this.secondParent = null;
+        this.files = Repository.currentCommit.files; // initially same as parent commit
+        this.files.putAll(Repository.staging.adding); // add or overwrite files staged for addition
+        this.files.keySet().removeAll(Repository.staging.deleting); // remove files staged for removal
+    }
+
     /**
-     * TODO: add instance variables here.
-     *
-     * List all instance variables of the Commit class here with a useful
-     * comment above them describing what that variable represents and how that
-     * variable is used. We've provided one example for `message`.
+     * Constructor with all fields,
+     * should be used only when creating the initial commit
      */
+    public Commit(String message, Date date, String parent) {
+        this.message = message;
+        this.date = date;
+        this.parent = parent;
+        this.secondParent = null;
+        this.files = new HashMap<>();
+    }
 
-    /** The message of this Commit. */
-    private String message;
-
-    /* TODO: fill in the rest of this class. */
+    // Save this commit to disk for persistence
+    public String saveToDisk() {
+        String sha1 = sha1(serialize(this));
+        writeObject(join(Repository.COMMITS_DIR, sha1), this);
+        return sha1;
+    }
 }
