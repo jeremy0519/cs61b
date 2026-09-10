@@ -2,8 +2,7 @@ package gitlet;
 
 import java.io.File;
 import java.text.SimpleDateFormat;
-import java.util.Date;
-import java.util.HashMap;
+import java.util.*;
 
 import static gitlet.Utils.*;
 
@@ -125,7 +124,7 @@ public class Repository {
         }
         staging.removeIfAdding(filename);
         if (tracked) {
-            staging.stageRemove(filename);
+            staging.stageDelete(filename);
             restrictedDelete(join(CWD, filename));
         }
     }
@@ -216,12 +215,9 @@ public class Repository {
     }
 
     public static void checkoutFile(String commitID, String filename) {
-        File file = join(COMMITS_DIR, commitID);
-        if (!file.exists()) {
-            System.out.println("No commit with that id exists.");
-            System.exit(0);
-        }
-        Commit commit = readObject(file, Commit.class);
+        // If using shortened commitID, find out the full commitID first
+        commitID = fullCommitID(commitID);
+        Commit commit = readObject(join(COMMITS_DIR,commitID), Commit.class);
         String hash = commit.files.get(filename);
         if (hash == null) {
             System.out.println("File does not exist in that commit.");
@@ -231,19 +227,13 @@ public class Repository {
     }
 
     /**
-     * Copy all files from a branch back to working directory
+     * Copy all files from a commit back to working directory,
+     * and remove all files tracked in current but not present in that commit
      */
-    public static void checkoutBranch(String branch) {
-        String commitID = refs.get(branch);
-        if (commitID == null) {
-            System.out.println("No such branch exists.");
-            System.exit(0);
-        }
-        if (branch.equals(currentBranch)) {
-            System.out.println("No need to checkout the current branch.");
-            System.exit(0);
-        }
-        Commit commit = readObject(join(COMMITS_DIR, commitID), Commit.class);
+    public static void checkoutCommit(String commitID){
+        // If using shortened commitID, find out the full commitID first
+        commitID = fullCommitID(commitID);
+        Commit commit = readObject(join(COMMITS_DIR,commitID), Commit.class);
         // Check if any file would be overwritten
         commit.files.forEach((filename, hash) -> {
             if (join(CWD, filename).exists() && !currentCommit.files.containsKey(filename)) {
@@ -251,10 +241,10 @@ public class Repository {
                 System.exit(0);
             }
         });
-        // Add (Overwrite) files from new branch
+        // Add (Overwrite) files from new commit
         commit.files.forEach((filename, hash) ->
                 writeContents(join(CWD, filename), readContents(join(BLOBS_DIR, hash))));
-        // Delete files tracked in old branch but not present in new branch
+        // Delete files tracked in current but not present in checked-out commit
         currentCommit.files.keySet().forEach((filename) -> {
             if (!commit.files.containsKey(filename)) {
                 restrictedDelete(join(CWD, filename));
@@ -263,5 +253,180 @@ public class Repository {
         // Clear staging area
         staging = new Staging();
         writeObject(STAGING_FILE, staging);
+    }
+
+    /**
+     * Helper method to return full commitID if supplied with fewer digits
+     * Also handles when no commit exists with that ID
+     */
+    private static String fullCommitID(String commitID) {
+        if (commitID.length()< UID_LENGTH){
+            for (String hash: plainFilenamesIn(COMMITS_DIR)){
+                if (hash.startsWith(commitID)){
+                    commitID = hash;
+                }
+            }
+        }
+        File file = join(COMMITS_DIR, commitID);
+        if (!file.exists()) {
+            System.out.println("No commit with that id exists.");
+            System.exit(0);
+        }
+        return commitID;
+    }
+
+    /**
+     * Same as checkout commit, except using branch name instead of commitID
+     */
+    public static void checkoutBranch(String name) {
+        String commitID = refs.get(name);
+        if (commitID == null) {
+            System.out.println("No such branch exists.");
+            System.exit(0);
+        }
+        if (name.equals(currentBranch)) {
+            System.out.println("No need to checkout the current branch.");
+            System.exit(0);
+        }
+        checkoutCommit(commitID);
+        // Change current branch
+        writeContents(HEAD_FILE,name);
+    }
+
+    /**
+     * Displays all branches that exists, marking current branch with *,
+     * and displays what files have been staged for addition or removal
+     */
+    public static void status(){
+        System.out.println("=== Branches ===");
+        String[] branches = refs.keySet().toArray(new String[0]); // convert set to array
+        Arrays.sort(branches);
+        for (String branch:branches){
+            if (branch.equals(currentBranch)){
+                System.out.println("*"+branch);
+            }else {
+                System.out.println(branch);
+            }
+        }
+        System.out.println();
+
+        System.out.println("=== Staged Files ===");
+        String[] adding = staging.adding.keySet().toArray(new String[0]);
+        Arrays.sort(adding);
+        for (String filename: adding){
+            System.out.println(filename);
+        }
+        System.out.println();
+
+        System.out.println("=== Removed Files ===");
+        String[] deleting = staging.deleting.toArray(new String[0]);
+        Arrays.sort(deleting);
+        for (String filename: deleting){
+            System.out.println(filename);
+        }
+        System.out.println();
+
+        System.out.println("=== Modifications Not Staged For Commit ===");
+        TreeMap<String,String> output = new TreeMap<>();
+        // Files tracked in current commit:
+        currentCommit.files.forEach((filename,hash)->{
+            File file = join(CWD,filename);
+            if (!file.exists()){
+                // deleted from working directory but not staged for removal
+                if (!staging.deleting.contains(filename)){
+                    output.put(filename,"(deleted)");
+                }
+            }else{
+                // changed in working directory but not staged for addition
+                if (!sha1(readContents(file)).equals(hash) && !staging.adding.containsKey(filename)){
+                    output.put(filename,"(modified)");
+                }
+            }
+        });
+        // Files staged for addition:
+        staging.adding.forEach((filename,hash)->{
+            File file = join(CWD,filename);
+            if (!file.exists()){
+                // deleted from working directory
+                output.put(filename,"(deleted)");
+            }else{
+                // changed in the working directory
+                if (!sha1(readContents(file)).equals(hash)){
+                    output.put(filename,"(modified)");
+                }
+            }
+        });
+        output.forEach((filename,status)->{
+            System.out.println(filename+" "+status);
+        });
+        System.out.println();
+
+        System.out.println("=== Untracked files ===");
+        for (String filename:plainFilenamesIn(CWD) ){
+            // neither staged for addition nor tracked
+            if (!staging.adding.containsKey(filename) && !currentCommit.files.containsKey(filename)){
+                System.out.println(filename);
+            }
+            // staged for removal but recreated
+            if (staging.deleting.contains(filename)){
+                System.out.println(filename);
+            }
+        }
+        System.out.println();
+    }
+
+    /**
+     * Creates a branch
+     */
+    public static void branch(String name){
+        if (refs.containsKey(name)){
+            System.out.println("A branch with that name already exists.");
+            System.exit(0);
+        }
+        refs.put(name,currentCommitID);
+        writeObject(REFS_FILE, refs);
+    }
+
+    /**
+     * Removes a branch
+     */
+    public static void removeBranch(String name){
+        if (!refs.containsKey(name)){
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        if (currentBranch.equals(name)){
+            System.out.println("Cannot remove the current branch.");
+            System.exit(0);
+        }
+        refs.remove(name);
+        writeObject(REFS_FILE, refs);
+    }
+
+    /**
+     * Resets current branch to a previous commit
+     */
+    public static void reset(String commitID){
+        checkoutCommit(commitID);
+        refs.put(currentBranch,commitID);
+        writeObject(REFS_FILE, refs);
+    }
+
+    /**
+     * Merges files from the given branch into the current branch
+     */
+    public static void merge(String name){
+        if (!staging.adding.isEmpty() || !staging.deleting.isEmpty()){
+            System.out.println("You have uncommitted changes.");
+            System.exit(0);
+        }
+        if (!refs.containsKey(name)){
+            System.out.println("A branch with that name does not exist.");
+            System.exit(0);
+        }
+        if (currentBranch.equals(name)){
+            System.out.println("Cannot merge a branch with itself.");
+            System.exit(0);
+        }
     }
 }

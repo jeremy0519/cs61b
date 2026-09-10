@@ -48,8 +48,8 @@ public class Staging implements Serializable {
         writeObject(Repository.STAGING_FILE, this);
     }
 
-    // Adds file into removing
-    public void stageRemove(String filename) {
+    // Adds file into deleting
+    public void stageDelete(String filename) {
         deleting.add(filename);
         writeObject(Repository.STAGING_FILE, this);
     }
