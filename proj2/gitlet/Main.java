@@ -33,7 +33,7 @@ public class Main {
                 Repository.add(args[1]);
                 break;
             case "commit":
-                if (args.length == 1) {
+                if (args.length == 1 || (args.length == 2 && args[1].isEmpty())) {
                     System.out.println("Please enter a commit message.");
                     System.exit(0);
                 } else if (args.length > 2) {
