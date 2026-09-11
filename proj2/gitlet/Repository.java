@@ -368,7 +368,7 @@ public class Repository {
         });
         System.out.println();
 
-        System.out.println("=== Untracked files ===");
+        System.out.println("=== Untracked Files ===");
         for (String filename : plainFilenamesIn(CWD)) {
             // neither staged for addition nor tracked
             if (!staging.adding.containsKey(filename)
