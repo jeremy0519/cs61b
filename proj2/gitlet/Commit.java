@@ -30,7 +30,8 @@ public class Commit implements Serializable {
         this.secondParent = null;
         this.files = Repository.currentCommit.files; // initially same as parent commit
         this.files.putAll(Repository.staging.adding); // add or overwrite files staged for addition
-        this.files.keySet().removeAll(Repository.staging.deleting); // remove files staged for removal
+        this.files.keySet().removeAll(
+                Repository.staging.deleting); // remove files staged for deleting
     }
 
     /**

@@ -48,7 +48,8 @@ public class Repository {
     public static void init() {
         // abort if .gitlet exists
         if (GITLET_DIR.exists()) {
-            System.out.println("A Gitlet version-control system already exists in the current directory.");
+            System.out.println("A Gitlet version-control system"
+                    + " already exists in the current directory.");
             System.exit(0);
         }
 
@@ -160,7 +161,8 @@ public class Repository {
     }
 
     // Date formatter
-    private static final SimpleDateFormat FORMATTER = new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
+    private static final SimpleDateFormat FORMATTER =
+            new SimpleDateFormat("EEE MMM d HH:mm:ss yyyy Z");
 
     // Recursive helper methods, returns parent commit ID
     private static String printCommit(String commitID) {
@@ -240,7 +242,8 @@ public class Repository {
         // Check if any file would be overwritten
         commit.files.forEach((filename, hash) -> {
             if (join(CWD, filename).exists() && !currentCommit.files.containsKey(filename)) {
-                System.out.println("There is an untracked file in the way; delete it, or add and commit it first.");
+                System.out.println("There is an untracked file in the way;"
+                        + " delete it, or add and commit it first.");
                 System.exit(0);
             }
         });
@@ -341,7 +344,8 @@ public class Repository {
                 }
             } else {
                 // changed in working directory but not staged for addition
-                if (!sha1(readContents(file)).equals(hash) && !staging.adding.containsKey(filename)) {
+                if (!sha1(readContents(file)).equals(hash)
+                        && !staging.adding.containsKey(filename)) {
                     output.put(filename, "(modified)");
                 }
             }
@@ -367,7 +371,8 @@ public class Repository {
         System.out.println("=== Untracked files ===");
         for (String filename : plainFilenamesIn(CWD)) {
             // neither staged for addition nor tracked
-            if (!staging.adding.containsKey(filename) && !currentCommit.files.containsKey(filename)) {
+            if (!staging.adding.containsKey(filename)
+                    && !currentCommit.files.containsKey(filename)) {
                 System.out.println(filename);
             }
             // staged for removal but recreated
