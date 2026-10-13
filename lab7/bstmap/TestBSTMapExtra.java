@@ -1,9 +1,11 @@
 package bstmap;
 
-import java.util.Set;
-import java.util.HashSet;
-import static org.junit.Assert.*;
 import org.junit.Test;
+
+import java.util.HashSet;
+import java.util.Set;
+
+import static org.junit.Assert.*;
 
 /** Tests of optional parts of lab 7. */
 public class TestBSTMapExtra {
@@ -23,6 +25,24 @@ public class TestBSTMapExtra {
         Set<String> keySet = b.keySet();
         assertTrue(values.containsAll(keySet));
         assertTrue(keySet.containsAll(values));
+    }
+
+    /*
+     * Sanity test for iterator, written by Jeremy
+     */
+    @Test
+    public void sanityIteratorTest() {
+        BSTMap<String, String> map = new BSTMap<>();
+        map.put("c", "a");
+        map.put("b", "a");
+        map.put("a", "a");
+        map.put("d", "a");
+        map.put("e", "a"); // a b c d e
+        Set<String> result = new HashSet<>();
+        for (String s : map) {
+            result.add(s);
+        }
+        assertTrue(result.equals(Set.of("a", "b", "c", "d", "e")));
     }
 
     /* Remove Test
